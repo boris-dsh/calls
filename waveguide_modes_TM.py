@@ -13,8 +13,8 @@ dir = os.path.dirname(__file__)
 epsilon_1 = -15.0 + 1.0j
 epsilon_2 = 2.25
 epsilon_3 = 1.0
-d = 700e-9
-wavelength = 600e-9
+d = 400e-9
+wavelength = 700e-9
 k0 = 2 * np.pi / wavelength
 
 """...........................FUNCTIONS.........................."""
@@ -42,9 +42,9 @@ def dispersion_relation(beta, epsilon_1, epsilon_2, epsilon_3, d, k0):
 """.............................MAIN............................."""
 
 def dispersion_relation_wrapper(beta, epsilon_1, epsilon_2, epsilon_3, d, k0):
-    beta_complex = beta[0] + 1j * beta[1]  # Combine real and imaginary parts
+    beta_complex = beta[0] + 1j * beta[1]
     result = dispersion_relation(beta_complex, epsilon_1, epsilon_2, epsilon_3, d, k0)
-    return np.array([np.real(result), np.imag(result)])  # Return real and imaginary parts
+    return np.array([np.real(result), np.imag(result)])
 
 beta_guess_real = 1.5 * k0
 beta_guess_imag = 0.1 * k0

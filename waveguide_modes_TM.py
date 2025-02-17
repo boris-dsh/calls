@@ -10,11 +10,11 @@ dir = os.path.dirname(__file__)
 
 """...........................CONSTANTS.........................."""
 
-epsilon_1 = -15.0 + 1.0j
+epsilon_1 = -8.0 + 1.0j
 epsilon_2 = 2.25
 epsilon_3 = 1.0
-d = 400e-9
-wavelength = 700e-9
+d = 410e-9
+wavelength = 620e-9
 k0 = 2 * np.pi / wavelength
 
 """...........................FUNCTIONS.........................."""
@@ -46,16 +46,16 @@ def dispersion_relation_wrapper(beta, epsilon_1, epsilon_2, epsilon_3, d, k0):
     result = dispersion_relation(beta_complex, epsilon_1, epsilon_2, epsilon_3, d, k0)
     return np.array([np.real(result), np.imag(result)])
 
-beta_guess_real = 1.5 * k0
+beta_guess_real = 1. * k0 
 beta_guess_imag = 0.1 * k0
 beta_guess = np.array([beta_guess_real, beta_guess_imag])
 
 result = opt.root(dispersion_relation_wrapper, beta_guess, args=(epsilon_1, epsilon_2, epsilon_3, d, k0), method='lm')
 
 beta_solution = result.x[0] + 1j * result.x[1]
-print(f"Found beta: {beta_solution}")
+print(f"beta: {beta_solution}")
 n_eff = beta_solution / k0
-print(f"Effective index: {n_eff}")
+print(f"effective index: {n_eff}")
 
 kz1 = np.sqrt(epsilon_1 * k0**2 - beta_solution**2)
 kz2 = np.sqrt(epsilon_2 * k0**2 - beta_solution**2)
@@ -85,9 +85,9 @@ def calculate_mode_profile(beta, epsilon_1, epsilon_2, epsilon_3, d, k0, Q3):
         if zi < -d/2:
             Hy[i] = np.exp(-1j * kz1 * (zi))
         elif -d/2 <= zi <= d/2:
-            Hy[i] = (Q3[0, 0] + 1j * kz1 * Q3[0, 1]) * np.cos(kz2 * (zi - d/2)) + (Q3[1, 0] + 1j * kz1 * Q3[1, 1]) * (1 / kz2) * 2*np.sin(kz2 * (zi - d/2))
+            Hy[i] = (Q3[0, 0] - 1j * kz1 * Q3[0, 1]) * np.cos(kz2 * (zi - d/2)) + (Q3[1, 0] - 1j * kz1 * Q3[1, 1]) * (1 / kz2) * np.sin(kz2 * (zi - d/2))
         else:
-            Hy[i] = (Q3[0, 0] + 1j * kz1 * Q3[0, 1]) * np.exp(-1j * kz3 * (zi))
+            Hy[i] = (Q3[0, 0] - 1j * kz1 * Q3[0, 1]) * np.exp(1j * kz3 * (zi))
     
     return z, Hy
 

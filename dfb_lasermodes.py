@@ -12,8 +12,8 @@ dir = os.path.dirname(__file__)
 
 L = 1
 kappa = 1
-delta_L_vals = np.linspace(0, 15, 200)
-alpha_L_vals = np.linspace(-5, 10, 200)
+delta_L_vals = np.linspace(-15, 15, 200)
+alpha_L_vals = np.linspace(0, 10, 200)
 Delta, Alpha = np.meshgrid(delta_L_vals, alpha_L_vals)
 Eq1_vals = np.zeros_like(Delta)
 Eq2_vals = np.zeros_like(Delta)
@@ -47,4 +47,7 @@ plt.contour(Delta, Alpha, Eq4_vals, levels=[0], colors='C3')
 
 plt.xlabel(r'$\delta L$')
 plt.ylabel(r'$\alpha L$')
-plt.show()
+plt.show();plt.close()
+
+
+

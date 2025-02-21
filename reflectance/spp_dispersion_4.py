@@ -7,7 +7,7 @@ Author: Boris de Jong
 
 import numpy as np, matplotlib.pyplot as plt, os, pandas as pd
 from scipy.interpolate import interp1d
-from numpy.linalg import eig
+from numpy.linalg import eig 
 from scipy.signal import fftconvolve
 dir = os.path.dirname(__file__)
 

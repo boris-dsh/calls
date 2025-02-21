@@ -17,14 +17,15 @@ c = 2.998e8  # light speed [m/s]
 h = 6.62607015e-34  # planck's constant [Js]
 hbar = h / (2 * np.pi)  # reduced planck's constant [Js]
 e = 1.602176634e-19  # elementary charge [C]
-gamma = 0.05 * e  # coupling energy [J]
+gamma = 0.1 * e  # coupling energy [J]
 gamma_eV = gamma / e # coupling energy [eV]
 p = 600e-9  # pitch size of grating [m]
 g = 2 * np.pi / p  # reciprocal wave vector [rad/m]
-L = 50e-6 # grating size [m]
+L = 25e-6 # grating size [m]
+reciprocal_L = 2 * np.pi / L
 phi = np.pi   # phase shift
-x_vals = np.linspace(-L/2, L/2, 2000) # spatial width of grating 
-h_prime_x = -g * np.sin(g * x_vals + phi) # assume cosine form of first harmonic, so derivative -> -sin
+x_vals = np.linspace(-L/2, L/2, 5000) # spatial width of grating 
+h_prime_x = - np.sin(g * x_vals + phi) # assume cosine form of first harmonic, so derivative -> -sin
 
 """..........................MCPEAK DATA........................."""
 
@@ -126,6 +127,23 @@ def energy_to_wavelength(energy_eV: np.ndarray)-> np.ndarray:
     wavelength_nm = wavelength_m * 1e9
     return wavelength_nm
 
+def sinc_weight(k_target, k_x_vals):
+    """
+    Compute the sinc-based weighting function for k-space broadening.
+
+    Parameters:
+    k_target (float): The center wavevector.
+    k_x_vals (np.ndarray): Array of k_x values.
+    width (float): The broadening width (~1/L).
+
+    Returns:
+    np.ndarray: Normalized sinc weights.
+    """
+    delta_k = k_x_vals - k_target
+    sinc_weights = np.sinc(delta_k / reciprocal_L) ** 2  # sinc function centered at k_target
+    return sinc_weights / sinc_weights.sum()  # norm
+
+
 """.........................INTERPOLATION........................"""
 
 # initialize interpolation functions E(k)
@@ -133,7 +151,7 @@ n = 1 # interpolation of E(k±ng)
 E_of_k_right = interp1d(np.real(k_spp - (n * g)), np.real(E_vals), kind='linear', fill_value="extrapolate")
 E_of_k_left = interp1d(np.real(-k_spp + (n * g)), np.real(E_vals), kind='linear', fill_value="extrapolate")
 
-k_vals = np.linspace(-7e6, 7e6, 1000) 
+k_vals = np.linspace(-7e6, 7e6, 2000) 
 
 plt.plot(k_vals, E_of_k_right(k_vals))
 plt.plot(k_vals, E_of_k_left(k_vals))
@@ -161,84 +179,92 @@ for j in range(evec.shape[1]):
     plt.legend()
     plt.show(); plt.close() # plot eigenvectors
 
-for l in range(eval.shape[0]):
-    plt.figure()
-    plt.plot(k_vals, [eval[l] for eval in eigenvalues], 'o', label=f'eigenvalue {l+1}')
-    plt.xlabel(r'$k$ [m$^{-1}$]')
-    plt.ylabel('eigenvalue [eV]')
-    plt.legend()
-    plt.show(); plt.close() # plot eigenvalues
+
+plt.figure()
+plt.plot(k_vals, [eval[0] for eval in eigenvalues], 'o', label='eigenvalue 1')
+plt.plot(k_vals, [eval[1] for eval in eigenvalues], 'o', label='eigenvalue 2')
+plt.xlabel(r'$k$ [m$^{-1}$]')
+plt.ylabel('eigenvalue [eV]')
+plt.legend()
+plt.show(); plt.close() # plot eigenvalues
 
 """.........................REFLECTIVITY........................"""
 
 count = 0
-energy_vals = np.linspace(1.8, 3, 1000)
+energy_vals = np.linspace(1.8, 3, 2000)
 intensity_map = np.zeros((len(energy_vals), len(k_vals)))
+
 for i, k in enumerate(k_vals):
 
     eigval1 = eval_arr[i][0]
     eigval2 = eval_arr[i][1]
 
-    electric_field_1 = (evector_arr[i][0, 0]) * (np.exp(1j * (k + n * g) * x_vals)) - (evector_arr[i][0, 1]) * (np.exp(1j * (k - n * g) * x_vals))
-    electric_field_2 = (evector_arr[i][1, 0]) * (np.exp(1j * (k + n * g) * x_vals)) - (evector_arr[i][1, 1]) * (np.exp(1j * (k - n * g) * x_vals))
+    electric_field_1 = (evector_arr[i][0, 0]) * (np.exp(-1j * (k + n * g) * x_vals)) + (evector_arr[i][0, 1]) * (np.exp(-1j * (k - n * g) * x_vals))
+    electric_field_2 = (evector_arr[i][1, 0]) * (np.exp(-1j * (k + n * g) * x_vals)) + (evector_arr[i][1, 1]) * (np.exp(-1j * (k - n * g) * x_vals))
 
-    if count % 400 == 0:
+    # if count % 1000 == 0:
+    #     plt.figure()
+    #     plt.plot(x_vals, h_prime_x * electric_field_1 * np.exp(1j * k * x_vals), label='electric field 1')
+    #     plt.plot(x_vals, h_prime_x * electric_field_2 * np.exp(1j * k * x_vals), label='electric field 2')
+    #     plt.xlabel(r'$x$ [m]')
+    #     plt.ylabel('electric field')
+    #     plt.legend()
+    #     plt.show(); plt.close() # plot electric fields
+
+    weight_k1 = sinc_weight(k, k_vals)
+    weight_k2 = sinc_weight(k, k_vals)
+
+    M1 = np.trapezoid(h_prime_x * electric_field_1 * np.exp(1j * k * x_vals), x_vals) # trapezoidal integration
+    M2 = np.trapezoid(h_prime_x * electric_field_2 * np.exp(1j * k * x_vals), x_vals)
+
+    E_idx1 = np.abs(energy_vals - eigval1).argmin()
+    E_idx2 = np.abs(energy_vals - eigval2).argmin()
+
+    intensity_map[E_idx1, :] += weight_k1 * np.abs(M1) ** 2
+    intensity_map[E_idx2, :] += weight_k2 * np.abs(M2) ** 2
+
+    if count == 995 or count == 1000 or count == 1005:
         plt.figure()
-        plt.plot(x_vals, h_prime_x * electric_field_1, label='electric field 1')
-        plt.plot(x_vals, h_prime_x * electric_field_2, label='electric field 2')
+        plt.plot(k_vals, weight_k1 * np.abs(M1)**2, label='intensity 1')
+        plt.plot(k_vals, weight_k2 * np.abs(M2)**2, label='intensity 2')
         plt.xlabel(r'$x$ [m]')
         plt.ylabel('electric field')
         plt.legend()
         plt.show(); plt.close() # plot electric fields
-    
-
-    M1 = np.trapezoid(h_prime_x * electric_field_1, x_vals) # num integrate
-    M2 = np.trapezoid(h_prime_x * electric_field_2, x_vals)
-
-    E_idx1 = np.abs(energy_vals - eigval1).argmin()
-    intensity_map[E_idx1, i] += np.abs(M1)**2 * p / L
-    E_idx2 = np.abs(energy_vals - eigval2).argmin()
-    intensity_map[E_idx2, i] += np.abs(M2)**2 * p / L
 
     count += 1
+
 
 """.........................CONVOLUTION........................"""
 
 intensity_map[:, [0, -1]] = 0 # remove edge intensity for convolution
 intensity_map[[0, -1], :] = 0
 
-sinc_kernel = np.sinc(k_vals * L / 2) ** 2
-sinc_kernel /= np.sum(sinc_kernel)
-
-intensity_map = np.array([
-    fftconvolve(intensity_map[i], sinc_kernel, mode='same')
-    for i in range(intensity_map.shape[0])
-])
-kernel = gaussian_kernel(50, 5)[:, None] * gaussian_kernel(50, 5)
+kernel = gaussian_kernel(50, 1.5)[:, None] * gaussian_kernel(50, 1.5)
 intensity_map = fftconvolve(intensity_map, kernel, mode="same")
 intensity_map /= np.max(intensity_map)
 
 """.........................PLOTTING........................"""
 
-plt.plot(k_vals, np.sum(intensity_map, axis=0))
-plt.show(); plt.close()
-
-plt.imshow(intensity_map, extent=[k_vals[0], k_vals[-1], energy_vals[0], energy_vals[-1]], 
-           origin='lower', aspect='auto', cmap='inferno')
-plt.colorbar(label="intensity")
+plt.figure(figsize=(4, 6))
+plt.imshow(intensity_map, extent=[1e-6 * k_vals[0], 1e-6 * k_vals[-1], energy_vals[0], energy_vals[-1]], 
+           origin='lower', aspect='auto', cmap='cividis')
+plt.colorbar(label="intensity", location='top')
+plt.xlabel(r'$k$ [um$^{-1}$]')
+plt.ylabel('energy [eV]')
 plt.show()
 
 """.........................PLOTTING........................"""
 
 energy_min, energy_max = energy_to_wavelength(np.array([700, 400]))
-E_vals = np.linspace(energy_min, energy_max, 1000)  # energy [eV]
+E_vals = np.linspace(energy_min, energy_max, 2000)  # energy [eV]
 wavelengths = energy_to_wavelength(E_vals)  # eV -> [nm]
 intensity_flat, k_x, wavelength_grid = make_mesh(intensity_map, wavelengths)
 energy_grid = wavelength_to_energy(wavelength_grid)  # convert nm to [eV] 
 
 plt.figure(figsize=(4, 6))
 ax1 = plt.gca()
-pcm = ax1.pcolormesh(k_x, energy_grid, intensity_map, cmap='inferno', shading='auto')
+pcm = ax1.pcolormesh(k_x, energy_grid, intensity_map, cmap='cividis', shading='auto')
 
 plt.colorbar(pcm, ax=ax1, label='intensity (norm.)', location='top')
 ax1.set_xlabel(r'$k_x$ (rad/$\mu$m)')
@@ -258,4 +284,4 @@ ax2.set_ylabel('wavelength (nm)')
 plt.tight_layout()
 plt.show()
 
-""".........................INTERPOLATION........................"""
+""".........................END........................"""

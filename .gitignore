@@ -1,0 +1,5 @@
+# ignore macOS system files
+.DS_Store
+
+# ignore python codes in private folder
+reflectance/*.py

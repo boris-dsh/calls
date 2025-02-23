@@ -13,19 +13,20 @@ dir = os.path.dirname(__file__)
 
 """...........................CONSTANTS.........................."""
 
-c = 2.998e8  # light speed [m/s]
-h = 6.62607015e-34  # planck's constant [Js]
-hbar = h / (2 * np.pi)  # reduced planck's constant [Js]
-e = 1.602176634e-19  # elementary charge [C]
-gamma = 0.1 * e  # coupling energy [J]
-gamma_eV = gamma / e # coupling energy [eV]
-p = 600e-9  # pitch size of grating [m]
-g = 2 * np.pi / p  # reciprocal wave vector [rad/m]
-L = 25e-6 # grating size [m]
-reciprocal_L = 2 * np.pi / L
-phi = np.pi   # phase shift
-x_vals = np.linspace(-L/2, L/2, 5000) # spatial width of grating 
-h_prime_x = - np.sin(g * x_vals + phi) # assume cosine form of first harmonic, so derivative -> -sin
+c = 2.998e8                     # light speed [m/s]
+h = 6.62607015e-34              # planck's constant [Js]
+hbar = h / (2 * np.pi)          # reduced planck's constant [Js]
+e = 1.602176634e-19             # elementary charge [C]
+gamma = 0.1 * e                 # coupling energy [J]
+gamma_eV = gamma / e            # coupling energy [eV]
+p = 600e-9                      # pitch size of grating [m]
+g = 2 * np.pi / p               # reciprocal wave vector [rad/m]
+L = 25e-6                       # grating size [m]
+reciprocal_L = 2 * np.pi / L    # reciprocal length [m^-1]
+phi = np.pi /2                  # first harmonic phase shift [rad]
+
+x_vals = np.linspace(-L/2, L/2, 5000)   # spatial width of grating 
+h_prime_x = - np.sin(g * x_vals + phi)  # derivative of grating profile
 
 """..........................MCPEAK DATA........................."""
 
@@ -39,8 +40,8 @@ re_eps = n**2 - k**2 # real part of permittivity
 im_eps = 2 * k * n # imaginary part of permittivity
 
 lamb_arr = np.linspace(0.400, 1.200, 1000)  # lambda [μm]
-eps_m = np.interp(lamb_arr, wavelengths, re_eps + 1j * im_eps)  # metal permittivity interpolated for values in lamb_arr
-eps_d = 1.00  # vacuum permittivity
+eps_m = np.interp(lamb_arr, wavelengths, re_eps + 1j * im_eps)
+eps_d = 1.00    # vacuum permittivity
 
 k0 = (2 * np.pi) / (lamb_arr * 1e-6)  # angular wave number [rad/m]
 omega = c * k0  # angular frequency [rad/s]
@@ -222,6 +223,10 @@ for i, k in enumerate(k_vals):
 
     intensity_map[E_idx1, :] += weight_k1 * np.abs(M1) ** 2
     intensity_map[E_idx2, :] += weight_k2 * np.abs(M2) ** 2
+
+
+    # intensity_map[E_idx1, :] += np.abs(M1) ** 2
+    # intensity_map[E_idx2, :] += np.abs(M2) ** 2
 
     if count == 995 or count == 1000 or count == 1005:
         plt.figure()
